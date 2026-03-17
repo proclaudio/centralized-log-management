@@ -1,0 +1,20 @@
+---
+all:
+  children:
+    log_sources:
+      hosts:
+        foreman.lab.local:
+          ansible_host: 192.168.111.20
+          ansible_user: ladmin
+        awx.lab.local:
+          ansible_host: 192.168.111.30
+          ansible_user: ladmin
+        dev-web-01:
+          ansible_host: 192.168.111.101
+          ansible_user: ladmin
+        stage-web-01:
+          ansible_host: 192.168.111.102
+          ansible_user: ladmin
+        prod-web-01:
+          ansible_host: 192.168.111.103
+          ansible_user: ladmin

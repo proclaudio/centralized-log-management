@@ -1,0 +1,7 @@
+---
+promtail_version: "2.9.4"
+promtail_user: promtail
+promtail_group: promtail
+promtail_install_dir: /usr/local/bin
+promtail_config_dir: /etc/promtail
+loki_url: "http://192.168.111.40:3100"

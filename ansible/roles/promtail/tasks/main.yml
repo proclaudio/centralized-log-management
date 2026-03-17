@@ -1,0 +1,168 @@
+---
+- name: Create promtail system group
+  ansible.builtin.group:
+    name: "{{ promtail_group }}"
+    system: yes
+    state: present
+
+- name: Create promtail system user
+  ansible.builtin.user:
+    name: "{{ promtail_user }}"
+    group: "{{ promtail_group }}"
+    shell: /sbin/nologin
+    system: yes
+    create_home: no
+    state: present
+
+- name: Add promtail user to systemd-journal group
+  ansible.builtin.user:
+    name: "{{ promtail_user }}"
+    groups: systemd-journal
+    append: yes
+
+- name: Create promtail config directory
+  ansible.builtin.file:
+    path: "{{ promtail_config_dir }}"
+    state: directory
+    owner: "{{ promtail_user }}"
+    group: "{{ promtail_group }}"
+    mode: '0755'
+
+- name: Create promtail data directory
+  ansible.builtin.file:
+    path: /var/lib/promtail
+    state: directory
+    owner: "{{ promtail_user }}"
+    group: "{{ promtail_group }}"
+    mode: '0755'
+
+- name: Download promtail binary
+  ansible.builtin.get_url:
+    url: "https://github.com/grafana/loki/releases/download/v{{ promtail_version }}/promtail-linux-amd64.zip"
+    dest: /tmp/promtail-linux-amd64.zip
+    mode: '0644'
+
+- name: Install unzip
+  ansible.builtin.package:
+    name: unzip
+    state: present
+
+- name: Extract promtail binary
+  ansible.builtin.unarchive:
+    src: /tmp/promtail-linux-amd64.zip
+    dest: /tmp
+    remote_src: yes
+
+- name: Install promtail binary
+  ansible.builtin.copy:
+    src: /tmp/promtail-linux-amd64
+    dest: "{{ promtail_install_dir }}/promtail"
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+  notify: Restart promtail
+
+- name: Create promtail configuration
+  ansible.builtin.copy:
+    dest: "{{ promtail_config_dir }}/promtail-config.yml"
+    owner: "{{ promtail_user }}"
+    group: "{{ promtail_group }}"
+    mode: '0644'
+    content: |
+      server:
+        http_listen_port: 9080
+        grpc_listen_port: 0
+
+      positions:
+        filename: /var/lib/promtail/positions.yaml
+
+      clients:
+        - url: {{ loki_url }}/loki/api/v1/push
+
+      scrape_configs:
+        - job_name: system
+          static_configs:
+            - targets:
+                - localhost
+              labels:
+                job: syslog
+                host: {{ ansible_hostname }}
+                __path__: /var/log/messages
+
+        - job_name: secure
+          static_configs:
+            - targets:
+                - localhost
+              labels:
+                job: secure
+                host: {{ ansible_hostname }}
+                __path__: /var/log/secure
+
+        - job_name: journal
+          journal:
+            max_age: 12h
+            labels:
+              job: systemd-journal
+              host: {{ ansible_hostname }}
+          relabel_configs:
+            - source_labels: ['__journal__systemd_unit']
+              target_label: unit
+  notify: Restart promtail
+
+- name: Create promtail systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/promtail.service
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Promtail Log Shipping Agent
+      After=network.target
+
+      [Service]
+      User={{ promtail_user }}
+      Group={{ promtail_group }}
+      Type=simple
+      ExecStart={{ promtail_install_dir }}/promtail -config.file={{ promtail_config_dir }}/promtail-config.yml
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Restart promtail
+
+- name: Check if firewalld is running
+  ansible.builtin.systemd:
+    name: firewalld
+  register: firewalld_status
+  ignore_errors: yes
+
+- name: Open firewall port for Promtail
+  ansible.posix.firewalld:
+    port: 9080/tcp
+    permanent: yes
+    state: enabled
+    immediate: yes
+  when: firewalld_status.status.ActiveState == "active"
+
+- name: Enable and start promtail
+  ansible.builtin.systemd:
+    name: promtail
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Verify promtail is running
+  ansible.builtin.uri:
+    url: "http://localhost:9080/ready"
+    status_code: 200
+  register: result
+  retries: 5
+  delay: 5
+  until: result.status == 200
+
+- name: Print verification result
+  ansible.builtin.debug:
+    msg: "Promtail running on {{ inventory_hostname }} - HTTP {{ result.status }}"

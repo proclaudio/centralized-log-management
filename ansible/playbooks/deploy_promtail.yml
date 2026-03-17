@@ -1,0 +1,6 @@
+---
+- name: Deploy Promtail log shipping agent to all servers
+  hosts: log_sources
+  become: yes
+  roles:
+    - role: "{{ playbook_dir }}/../roles/promtail"
