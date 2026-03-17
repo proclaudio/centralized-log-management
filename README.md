@@ -93,19 +93,10 @@ Each server ships three log streams to Loki:
 
 ## Example Queries
 ```logql
-# All logs from dev-web-01
 {host="dev-web-01"}
-
-# All hosts - systemd journal
 {job="systemd-journal"} | host=~".+"
-
-# Error entries across all servers
 {job="syslog"} |= "error"
-
-# SSH authentication events
 {job="secure"} |= "sshd"
-
-# Failed sudo attempts
 {job="secure"} |= "sudo" |= "FAILED"
 ```
 
@@ -115,7 +106,7 @@ Each server ships three log streams to Loki:
 
 All 5 servers confirmed shipping logs to Loki:
 ```
-$ curl -s "http://192.168.111.40:3100/loki/api/v1/label/host/values"
+curl -s "http://192.168.111.40:3100/loki/api/v1/label/host/values"
 {
     "status": "success",
     "data": ["awx", "dev-web-01", "foreman", "prod-web-01", "stage-web-01"]
@@ -129,8 +120,8 @@ $ curl -s "http://192.168.111.40:3100/loki/api/v1/label/host/values"
 This project extends the monitoring stack from Project 3. The same Grafana
 instance now provides both metrics and logs in a single interface:
 
-- **Metrics:** Prometheus → node_exporter → CPU, RAM, disk, network
-- **Logs:** Loki → Promtail → syslog, secure, systemd journal
+- Metrics: Prometheus -> node_exporter -> CPU, RAM, disk, network
+- Logs: Loki -> Promtail -> syslog, secure, systemd journal
 
 ---
 
@@ -166,11 +157,11 @@ instance now provides both metrics and logs in a single interface:
 
 ## Part of DevOps Portfolio
 
-- [Project 1 — Enterprise Infrastructure Automation Lab](https://github.com/proclaudio/enterprise-infrastructure-automation-lab)
-- [Project 2 — CI/CD Push-to-Deploy Pipeline](https://github.com/proclaudio/cicd-push-to-deploy-pipeline)
-- [Project 3 — Infrastructure Monitoring Stack](https://github.com/proclaudio/infrastructure-monitoring-stack)
-- [Project 4 — Automated Security Hardening](https://github.com/proclaudio/automated-security-hardening)
-- **Project 5 — Centralized Log Management** (this repo)
-- Project 6 — Patch Management + Drift Detection (coming soon)
-- Project 7 — AWX RBAC + Team Management (coming soon)
-- Project 8 — Kubernetes Platform Lab (coming soon)
+- [Project 1 - Enterprise Infrastructure Automation Lab](https://github.com/proclaudio/enterprise-infrastructure-automation-lab)
+- [Project 2 - CI/CD Push-to-Deploy Pipeline](https://github.com/proclaudio/cicd-push-to-deploy-pipeline)
+- [Project 3 - Infrastructure Monitoring Stack](https://github.com/proclaudio/infrastructure-monitoring-stack)
+- [Project 4 - Automated Security Hardening](https://github.com/proclaudio/automated-security-hardening)
+- **Project 5 - Centralized Log Management** (this repo)
+- Project 6 - Patch Management + Drift Detection (coming soon)
+- Project 7 - AWX RBAC + Team Management (coming soon)
+- Project 8 - Kubernetes Platform Lab (coming soon)
